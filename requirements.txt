@@ -1,5 +1,0 @@
-# Development environment dependencies for Touch & Hold Flashlight
-# Enables self-signed HTTPS certificate generation and Terminal QR Code display
-cryptography>=43.0.0
-qrcode[pil]>=8.0
-pillow>=10.4.0
