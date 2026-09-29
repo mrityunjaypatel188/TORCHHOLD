@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#090a10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flashlight">
+  <meta name="description" content="Instant touch-and-hold flashlight. Illuminates only while pressed.">
+
+  <title>Touch & Hold Flashlight</title>
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Fullscreen Screen Torch Overlay (Fallback / Screen Light Mode) -->
+  <div id="screenTorchOverlay" class="screen-torch-overlay" aria-hidden="true"></div>
+
+  <!-- Ambient Light Reflection Behind Button -->
+  <div id="ambientGlow" class="ambient-glow" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Insecure HTTP Warning Banner (Shown when accessed over HTTP from mobile) -->
+    <div id="insecureBanner" class="insecure-banner hidden" role="alert">
+      <div class="insecure-banner-icon">🔒</div>
+      <div class="insecure-banner-text">
+        <strong>HTTPS Required for Camera Flashlight</strong>
+        <span>Chrome blocks camera on HTTP. Tap to switch:</span>
+      </div>
+      <a id="bannerHttpsBtn" href="#" class="banner-https-btn">Switch to HTTPS</a>
+    </div>
+
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <svg class="header-logo-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+          <path d="M9 2h6l2 4v3a5 5 0 0 1-3 4.58V20a2 2 0 0 1-2 2h-0a2 2 0 0 1-2-2v-6.42A5 5 0 0 1 7 9V6l2-4z"/>
+        </svg>
+        <span class="app-title">TORCH<span class="highlight">HOLD</span></span>
+      </div>
+
+      <div class="header-actions">
+        <!-- PWA Install Button (shown when available) -->
+        <button id="installBtn" class="icon-btn install-btn hidden" title="Install App" aria-label="Install App">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+
+        <!-- Mode Switcher: Hardware Torch vs Screen Torch -->
+        <button id="modeToggleBtn" class="mode-toggle-btn" title="Toggle Hardware/Screen Torch" aria-label="Switch Mode">
+          <span id="modeIcon" class="mode-icon">⚡</span>
+          <span id="modeLabel" class="mode-text">Hardware</span>
+        </button>
+
+        <!-- Info / Diagnostics Button -->
+        <button id="infoBtn" class="icon-btn" title="App Info & Hardware Diagnostics" aria-label="Information">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Status Pill -->
+      <div class="status-wrapper">
+        <div id="statusPill" class="status-pill status-idle">
+          <span class="status-dot"></span>
+          <span id="statusText">Setup Required</span>
+        </div>
+      </div>
+
+      <!-- Center Interaction Area: Button & Light Beam -->
+      <div class="button-stage">
+        <!-- Animated Light Beam Cone -->
+        <div id="lightBeam" class="light-beam" aria-hidden="true"></div>
+
+        <!-- The Primary TOUCH AND HOLD Button -->
+        <button
+          id="torchBtn"
+          class="torch-button locked"
+          disabled
+          aria-label="Hold to illuminate flashlight"
+          touch-action="none"
+        >
+          <div class="button-outer-ring">
+            <div class="button-inner-face">
+              <!-- Glow Aura -->
+              <div class="glow-aura"></div>
+
+              <!-- Center Flashlight Icon -->
+              <div class="torch-icon-wrapper">
+                <svg id="torchSvg" viewBox="0 0 64 64" class="torch-svg">
+                  <!-- Flashlight Head -->
+                  <path class="torch-path head" d="M22 18 L42 18 L38 28 L26 28 Z"/>
+                  <!-- Lens Top Glow Line -->
+                  <line class="torch-path lens" x1="22" y1="18" x2="42" y2="18"/>
+                  <!-- Flashlight Neck -->
+                  <rect class="torch-path neck" x="27" y="28" width="10" height="6" rx="1"/>
+                  <!-- Flashlight Handle -->
+                  <rect class="torch-path handle" x="25" y="34" width="14" height="22" rx="2"/>
+                  <!-- Handle Grip Ridges -->
+                  <line class="torch-path ridge" x1="25" y1="40" x2="39" y2="40"/>
+                  <line class="torch-path ridge" x1="25" y1="45" x2="39" y2="45"/>
+                  <line class="torch-path ridge" x1="25" y1="50" x2="39" y2="50"/>
+                  <!-- Light Burst Rays -->
+                  <g class="burst-rays">
+                    <line x1="32" y1="12" x2="32" y2="4"/>
+                    <line x1="20" y1="14" x2="14" y2="8"/>
+                    <line x1="44" y1="14" x2="50" y2="8"/>
+                  </g>
+                </svg>
+              </div>
+
+              <!-- Button Primary State Text -->
+              <span id="buttonTitle" class="button-title">SETUP FIRST</span>
+              <span id="buttonSubtitle" class="button-subtitle">Tap setup below</span>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Quick Controls Toolbar -->
+      <section class="quick-toolbar" aria-label="Flashlight options">
+        <!-- Haptics Toggle -->
+        <button id="hapticToggleBtn" class="tool-btn active" title="Toggle Haptic Vibration" aria-label="Toggle vibration feedback">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3a9 9 0 0 0-9 9m18 0a9 9 0 0 0-9-9M12 7a5 5 0 0 0-5 5m10 0a5 5 0 0 0-5-5"/>
+            <circle cx="12" cy="12" r="1" fill="currentColor"/>
+          </svg>
+          <span>Haptics</span>
+        </button>
+
+        <!-- Sound Click Toggle -->
+        <button id="soundToggleBtn" class="tool-btn active" title="Toggle Sound Feedback" aria-label="Toggle sound feedback">
+          <svg id="soundIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <span>Sound</span>
+        </button>
+
+        <!-- Strobe / Beacon Mode Switcher -->
+        <button id="strobeToggleBtn" class="tool-btn" title="Toggle Strobe Pulse" aria-label="Toggle strobe mode">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>Strobe</span>
+        </button>
+      </section>
+    </main>
+
+    <!-- Bottom Setup Card (Shown initially until permission is granted) -->
+    <div id="setupCard" class="setup-card">
+      <div class="setup-icon-circle">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+      <div class="setup-details">
+        <h2 class="setup-heading">Enable Camera Flashlight</h2>
+        <p class="setup-desc">
+          To control your phone's LED torch, mobile browsers require one-time camera permission. 
+          <strong>No video is recorded or transmitted.</strong>
+        </p>
+      </div>
+      <button id="enableTorchBtn" class="action-btn primary-btn">
+        <span class="btn-text">Enable Flashlight</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Active Hints / Instructions Footer -->
+    <footer class="app-footer">
+      <p id="footerHint" class="footer-hint">Touch & hold anywhere on the button to turn ON. Release to turn OFF.</p>
+    </footer>
+  </div>
+
+  <!-- Modal: Info & Diagnostics -->
+  <div id="infoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modalTitle" class="modal-title">Device & Flashlight Info</h3>
+        <button id="closeInfoBtn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="info-group">
+          <h4>How It Works</h4>
+          <p>
+            This web app controls your mobile device's camera LED torch via the standard
+            <code>MediaStreamTrack.applyConstraints({ advanced: [{ torch: true }] })</code> API.
+          </p>
+        </div>
+
+        <div class="info-group">
+          <h4>Privacy Guarantee</h4>
+          <p>
+            Your camera is used solely to access the physical LED torch. 
+            The video stream is never rendered, recorded, stored, or sent over any network.
+          </p>
+        </div>
+
+        <div class="info-group">
+          <h4>System Diagnostics</h4>
+          <ul class="diag-list">
+            <li><span>Context:</span> <strong id="diagContext">Checking...</strong></li>
+            <li><span>MediaDevices API:</span> <strong id="diagMedia">Checking...</strong></li>
+            <li><span>Hardware Torch:</span> <strong id="diagTorch">Unknown</strong></li>
+            <li><span>Active Camera:</span> <span id="diagCamera">None</span></li>
+            <li><span>Browser:</span> <span id="diagBrowser">Detecting...</span></li>
+          </ul>
+        </div>
+
+        <div class="info-group">
+          <h4>Platform Compatibility</h4>
+          <p class="compat-note">
+            • <strong>Android Chrome / Edge / Opera:</strong> Full native hardware torch supported.<br>
+            • <strong>iOS Safari:</strong> Apple WebKit does not expose hardware torch control to websites. Use <strong>Screen Torch Mode</strong> for full brightness white screen.<br>
+            • <strong>Desktop / Laptop:</strong> Screen Torch mode simulates flash using monitor brightness.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="testScreenTorchBtn" class="action-btn secondary-btn">Try Screen Torch</button>
+        <button id="okInfoBtn" class="action-btn primary-btn">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Permission Denied or Unsupported Fallback -->
+  <div id="fallbackModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="fallbackTitle" class="modal-title">Hardware Torch Unavailable</h3>
+        <button id="closeFallbackBtn" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="fallback-icon-wrap">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#f59e0b" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <p id="fallbackMessage" class="fallback-msg">
+          Your browser or device does not support direct hardware torch control via WebRTC.
+        </p>
+        <div class="fallback-solutions">
+          <p><strong>Recommended Solution:</strong></p>
+          <p>Switch to <strong>Screen Torch Mode</strong>. It turns your entire display into an ultra-bright white flashlight on touch & hold!</p>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-stacked">
+        <a id="fallbackHttpsBtn" href="#" class="action-btn primary-btn hidden">
+          <span>Switch to Secure HTTPS (Port 8443)</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        <button id="enableScreenModeBtn" class="action-btn secondary-btn">Switch to Screen Torch Mode</button>
+        <button id="dismissFallbackBtn" class="action-btn text-btn">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Context Synthesizer & App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
